@@ -7,7 +7,7 @@ router.get('/workers/:owner',getWorkersDetails)
 
 router.post('/workers', createWorker)
 
-router.get('/search-by-name/:inputText', searchByName) //query according to the owner
+router.post('/search-by-name', searchByName) //query according to the owner
 
 router.get('/search-by-area/:inputText', searchByArea) //query according to the owner
 

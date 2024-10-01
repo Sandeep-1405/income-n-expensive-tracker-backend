@@ -34,7 +34,7 @@ const getWorkersDetails = async(req,res)=>{
 }
 
 const createWorker = async (req, res) => {
-  const { name, date, area, amount, description, owner } = req.body;
+  const { name, date, area, amount, owner } = req.body;
 
   try {
     await db.collection('workers').doc().set(req.body);
@@ -50,12 +50,14 @@ const createWorker = async (req, res) => {
 
 
 const searchByName = async(req,res)=>{
-  const {inputText} = req.params;
+  const {inputText} = req.body;
+  console.log(inputText)
   try{
     const listByNames = []
     const listByNamesSnapshot = await db.collection('workers').where('name',"==",inputText).get();
 
     if (listByNamesSnapshot.empty) {
+      console.log("No workers found for the given Name.")
       return res.status(404).json({ success: false, message: 'No workers found for the given Name.' });
     }
 
@@ -150,7 +152,7 @@ const getWorkerDetailsById = async (req, res) => {
 
 const updateWorker = async (req, res) => {
   const {id} = req.params;
-  const {name, date, area, amount, description } = req.body;
+  const {name, date, area, paid, due, amount } = req.body;
 
   try {
     // Reference to the document
@@ -164,7 +166,7 @@ const updateWorker = async (req, res) => {
     }
 
     // Update the document with the new data
-    await workerRef.update({ name, date, area, amount, description });
+    await workerRef.update({ name, date, area, paid, due, amount });
 
     res.status(200).json({ success: true, message: "Worker updated successfully" });
 
