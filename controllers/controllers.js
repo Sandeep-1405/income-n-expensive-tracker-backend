@@ -49,9 +49,9 @@ const createWorker = async (req, res) => {
 };
 
 
-const searchByName = async(req,res)=>{
+const searchByName = async (req,res) =>{
   const {inputText} = req.body;
-  console.log(inputText)
+  //console.log(inputText)
   try{
     const listByNames = []
     const listByNamesSnapshot = await db.collection('workers').where('name',"==",inputText).get();
