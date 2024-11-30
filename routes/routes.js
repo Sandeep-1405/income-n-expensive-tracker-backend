@@ -1,20 +1,20 @@
 const express = require('express');
-const {createWorker, getWorkersDetails, searchByName,searchByArea, deleteWorker, getWorkerDetailsById, updateWorker} = require('../controllers/controllers')
+const {createExpensive, getExpensivesDetails, searchByName,searchByArea, deleteExpensive, getExpensiveDetailsById, updateExpensive} = require('../controllers/controllers')
 
 const router = express.Router();
 
-router.get('/workers/:owner',getWorkersDetails)
+router.get('/expensives/:owner',getExpensivesDetails)
 
-router.post('/workers', createWorker)
+router.post('/expensive', createExpensive)
 
 router.post('/search-by-name', searchByName) //query according to the owner
 
 router.get('/search-by-area/:inputText', searchByArea) //query according to the owner
 
-router.delete('/workers/:id', deleteWorker)
+router.delete('/:owner/expensive/:id', deleteExpensive)
 
-router.get('/worker/:id',getWorkerDetailsById)
+router.get('/:owner/expensive/:id',getExpensiveDetailsById)
 
-router.put('/worker/:id',updateWorker)
+router.put('/:owner/expensive/:id',updateExpensive)
 
 module.exports = router

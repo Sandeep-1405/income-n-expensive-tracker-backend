@@ -7,15 +7,17 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-const getWorkersDetails = async(req,res)=>{
+const getExpensivesDetails = async(req,res)=>{
     try {
         const { owner } = req.params;
+        //console.log(req.params)
+        //console.log(owner)
         const workerList = [];
     
-        const workersSnapshot = await db.collection('workers').where('owner', '==', owner).get();
+        const workersSnapshot = await db.collection('owners').doc(owner).collection('Expensives').get();
     
         if (workersSnapshot.empty) {
-          return res.status(404).json({ success: false, message: 'No workers found for the given owner.' });
+          return res.status(404).json({ success: false, message: 'No workers found for the given Doc.' });
         }
     
         workersSnapshot.forEach(doc => {
@@ -25,7 +27,7 @@ const getWorkersDetails = async(req,res)=>{
           });
         });
         //console.log(workerList)
-        res.status(200).json({ success: true, workers: workerList });
+        res.status(200).json({ success: true, Expensives: workerList });
     
       } catch (error) {
         console.error('Error fetching worker details:', error);
@@ -33,13 +35,13 @@ const getWorkersDetails = async(req,res)=>{
     }
 }
 
-const createWorker = async (req, res) => {
-  const { name, date, area, amount, owner } = req.body;
+const createExpensive = async (req, res) => {
+  const { name,date,area,paid,due,amount, docName } = req.body;
 
   try {
-    await db.collection('workers').doc().set(req.body);
+    await db.collection('owners').doc(docName).collection("Expensives").add({name,date,area,paid,due,amount});
     
-    console.log("Worker created");
+    console.log("Expensive created");
     return res.status(201).json({ message: "Worker created successfully" });
   } catch (error) {
     // Error handling
@@ -103,11 +105,11 @@ const searchByArea = async(req,res)=>{
 
 }
 
-const deleteWorker = async (req, res) => {
-  const { id } = req.params;
+const deleteExpensive = async (req, res) => {
+  const { owner,id } = req.params;
 
   try {
-    const workerRef = db.collection('workers').doc(id); // Reference to the document by ID
+    const workerRef = db.collection('owners').doc(owner).collection('Expensives').doc(id); // Reference to the document by ID
     const workerDoc = await workerRef.get();
 
     if (!workerDoc.exists) {
@@ -125,13 +127,13 @@ const deleteWorker = async (req, res) => {
   }
 };
 
-const getWorkerDetailsById = async (req, res) => {
-  const { id } = req.params;
-  console.log(id)
+const getExpensiveDetailsById = async (req, res) => {
+  const { id,owner } = req.params;
+  console.log(owner)
 
   try {
     // Get the document by its ID
-    const workerDoc = await db.collection('workers').doc(id).get();
+    const workerDoc = await db.collection('owners').doc(owner).collection('Expensives').doc(id).get();
 
     if (!workerDoc.exists) {
       return res.status(404).json({ success: false, message: "Worker not found" });
@@ -143,20 +145,20 @@ const getWorkerDetailsById = async (req, res) => {
       ...workerDoc.data()
     };
 
-    res.status(200).json({ success: true, worker: workerData });
+    res.status(200).json({ success: true, Expensive: workerData });
   } catch (error) {
     console.error("Error fetching worker details:", error);
     res.status(500).json({ success: false, message: "Failed to fetch worker details" });
   }
 };
 
-const updateWorker = async (req, res) => {
-  const {id} = req.params;
+const updateExpensive = async (req, res) => {
+  const {id,owner} = req.params;
   const {name, date, area, paid, due, amount } = req.body;
 
   try {
     // Reference to the document
-    const workerRef = db.collection('workers').doc(id);
+    const workerRef = await db.collection('owners').doc(owner).collection('Expensives').doc(id);
 
     // Check if the document exists
     const workerDoc = await workerRef.get();
@@ -180,11 +182,11 @@ const updateWorker = async (req, res) => {
 
 
 module.exports = {
-  createWorker,
-    getWorkersDetails,
+  createExpensive,
+  getExpensivesDetails,
     searchByName,
     searchByArea,
-    deleteWorker,
-    getWorkerDetailsById,
-    updateWorker
+    deleteExpensive,
+    getExpensiveDetailsById,
+    updateExpensive
 }
