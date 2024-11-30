@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const serviceAccount = require(process.env.serviceAccount);
+//console.log(serviceAccount)
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -37,6 +38,7 @@ const getExpensivesDetails = async(req,res)=>{
 
 const createExpensive = async (req, res) => {
   const { name,date,area,paid,due,amount, docName } = req.body;
+  console.log(docName)
 
   try {
     await db.collection('owners').doc(docName).collection("Expensives").add({name,date,area,paid,due,amount});
@@ -51,59 +53,70 @@ const createExpensive = async (req, res) => {
 };
 
 
-const searchByName = async (req,res) =>{
-  const {inputText} = req.body;
-  //console.log(inputText)
-  try{
-    const listByNames = []
-    const listByNamesSnapshot = await db.collection('workers').where('name',"==",inputText).get();
+const expensiveSearch = async (req, res) => {
+  const { owner, input } = req.params;
+  //console.log(input)
 
-    if (listByNamesSnapshot.empty) {
-      console.log("No workers found for the given Name.")
-      return res.status(404).json({ success: false, message: 'No workers found for the given Name.' });
+  try {
+    const results = [];
+
+    let query;
+    if (!input) {
+      // If input is empty, fetch all documents
+      query = db.collection('owners').doc(owner).collection('Expensives');
+    } else {
+      // If input is provided, search by name or area
+      const nameQuery = db
+        .collection('owners')
+        .doc(owner)
+        .collection('Expensives')
+        .where('name', '>=', input)
+        .where('name', '<', input + '\uf8ff');
+
+      const areaQuery = db
+        .collection('owners')
+        .doc(owner)
+        .collection('Expensives')
+        .where('area', '>=', input)
+        .where('area', '<', input + '\uf8ff');
+
+      // Execute both queries and combine results
+      const [nameSnapshot, areaSnapshot] = await Promise.all([
+        nameQuery.get(),
+        areaQuery.get(),
+      ]);
+
+      nameSnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+
+      areaSnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Remove duplicates
+      const uniqueResults = Array.from(
+        new Map(results.map((item) => [item.id, item])).values()
+      );
+
+      return res.status(200).json({ success: true, Expensives: uniqueResults });
     }
 
-    listByNamesSnapshot.forEach(doc => {
-      listByNames.push({
-        id: doc.id,
-        ...doc.data()
-      });
+    // Fetch all documents if no input
+    const allSnapshot = await query.get();
+    allSnapshot.forEach((doc) => {
+      results.push({ id: doc.id, ...doc.data() });
     });
-    console.log(listByNames)
-    res.status(200).json({ success: true, workers: listByNames });
 
+    res.status(200).json({ success: true, workers: results });
   } catch (error) {
-    console.error('Error fetching worker details:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch worker details', error });
+    console.error('Error fetching data:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
+};
 
-}
 
-const searchByArea = async(req,res)=>{
-  const {inputText} = req.params;
-  try{
-    const listByArea = []
-    const listByAreasSnapshot = await db.collection('workers').where('area',"==",inputText).get();
 
-    if (listByAreasSnapshot.empty) {
-      return res.status(404).json({ success: false, message: 'No workers found for the given area.' });
-    }
-
-    listByAreasSnapshot.forEach(doc => {
-      listByArea.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    console.log(listByArea)
-    res.status(200).json({ success: true, workers: listByArea });
-
-  } catch (error) {
-    console.error('Error fetching worker details:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch worker details', error });
-  }
-
-}
 
 const deleteExpensive = async (req, res) => {
   const { owner,id } = req.params;
@@ -184,9 +197,8 @@ const updateExpensive = async (req, res) => {
 module.exports = {
   createExpensive,
   getExpensivesDetails,
-    searchByName,
-    searchByArea,
-    deleteExpensive,
-    getExpensiveDetailsById,
-    updateExpensive
+  expensiveSearch,
+  deleteExpensive,
+  getExpensiveDetailsById,
+  updateExpensive
 }
