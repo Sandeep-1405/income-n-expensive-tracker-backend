@@ -36,27 +36,26 @@ const getExpensivesDetails = async(req,res)=>{
         res.status(200).json({ success: true, Expensives: workerList });
     
       } catch (error) {
-        console.error('Error fetching worker details:', error);
+        //console.error('Error fetching worker details:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch worker details', error });
     }
 }
 
 const createExpensive = async (req, res) => {
-  const { name,date,area,paid,due,amount, docName } = req.body;
-  console.log(docName)
+  const { name,date,area,paid,due,amount,category, owner } = req.body;
+  //console.log(owner)
 
   try {
-    await db.collection('owners').doc(docName).collection("Expensives").add({name,date,area,paid,due,amount});
+    await db.collection('owners').doc(owner).collection("Expensives").add({name,date,area,paid,due,amount,category});
     
-    console.log("Expensive created");
-    return res.status(201).json({ message: "Worker created successfully" });
+    //console.log("Expensive created");
+    return res.status(201).json({ message: "Expensive created successfully" });
   } catch (error) {
     // Error handling
-    console.error("Error creating worker:", error);
-    return res.status(500).json({ message: "Failed to create worker" });
+    //console.error("Error creating worker:", error);
+    return res.status(500).json({ message: "Failed to create Expensive" });
   }
 };
-
 
 const expensiveSearch = async (req, res) => {
   const { owner, input } = req.params;
@@ -115,13 +114,10 @@ const expensiveSearch = async (req, res) => {
 
     res.status(200).json({ success: true, workers: results });
   } catch (error) {
-    console.error('Error fetching data:', error);
+    //console.error('Error fetching data:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
 };
-
-
-
 
 const deleteExpensive = async (req, res) => {
   const { owner,id } = req.params;
@@ -136,18 +132,18 @@ const deleteExpensive = async (req, res) => {
 
     await workerRef.delete(); // Delete the document by its Firestore document ID
 
-    console.log("Worker Deleted");
+    //console.log("Worker Deleted");
     return res.status(200).json({ message: "Worker deleted successfully" });
 
   } catch (error) {
-    console.error("Error deleting worker:", error);
+    //console.error("Error deleting worker:", error);
     return res.status(500).json({ message: "Failed to delete worker" });
   }
 };
 
 const getExpensiveDetailsById = async (req, res) => {
   const { id,owner } = req.params;
-  console.log(owner)
+  //console.log(owner)
 
   try {
     // Get the document by its ID
@@ -165,14 +161,14 @@ const getExpensiveDetailsById = async (req, res) => {
 
     res.status(200).json({ success: true, Expensive: workerData });
   } catch (error) {
-    console.error("Error fetching worker details:", error);
+    //console.error("Error fetching worker details:", error);
     res.status(500).json({ success: false, message: "Failed to fetch worker details" });
   }
 };
 
 const updateExpensive = async (req, res) => {
   const {id,owner} = req.params;
-  const {name, date, area, paid, due, amount } = req.body;
+  const {name, date, area, paid, due, amount,category } = req.body;
 
   try {
     // Reference to the document
@@ -186,16 +182,179 @@ const updateExpensive = async (req, res) => {
     }
 
     // Update the document with the new data
-    await workerRef.update({ name, date, area, paid, due, amount });
+    await workerRef.update({ name, date, area, paid, due, amount,category });
 
     res.status(200).json({ success: true, message: "Worker updated successfully" });
 
   } catch (error) {
-    console.error("Error updating worker:", error);
+    //console.error("Error updating worker:", error);
     res.status(500).json({ success: false, message: "Failed to update worker" });
   }
 };
 
+const createCategory = async (req,res)=>{
+  const {owner} = req.params;
+  const {category} = req.body;
+
+  try{
+   await db.collection('owners').doc(owner).collection('Categories').add({category});
+
+   //console.log("Category Created")
+   res.status(201).json({message:"Category Created"})
+  }catch(error){
+    //console.log(error)
+    res.status(500).json({error})
+  }
+}
+
+const getCategory = async(req,res) => {
+  const {owner} = req.params;
+  //console.log(owner)
+
+  try{
+    const categories = [];
+
+    const categorySnapshot = await db.collection('owners').doc(owner).collection('Categories').get();
+
+    categorySnapshot.forEach(category=>{
+      categories.push({
+        id: category.id,
+        ...category.data()
+      })
+    })
+    //console.log(categories)
+
+    res.status(200).json({categories})
+
+  }
+  catch(error){
+    //console.log(error)
+    res.status(500).json({error})
+  }
+}
+
+
+const fetchExpensivesByCategory = async(req,res)=>{
+  const {owner,category} = req.params;
+
+  try{
+    const categoryExpensives = await db.collection('owners').doc(owner).collection('Expensives').where('category','==',category).get();
+
+    const categoryExpensivesList = []
+
+    categoryExpensives.forEach(doc=>{
+      categoryExpensivesList.push({
+        id:doc.id,
+        ...doc.data()
+      })
+    })
+    res.status(200).json({Expensives: categoryExpensivesList})
+  }catch(error){
+    //console.log(error)
+    res.status(500).json({error})
+  }
+}
+
+const updateCategory = async (req, res) => {
+  const { id,owner } = req.params; // Get category ID from the URL
+  const { category } = req.body; // Get the new category name from the body
+  
+  try {
+    const categoryRef = db.collection('owners').doc(owner).collection('Categories').doc(id);
+    const categoryDoc = await categoryRef.get();
+
+    if (!categoryDoc.exists) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Update the category name
+    await categoryRef.update({ category });
+    return res.status(200).json({ message: 'Category updated successfully' });
+  } catch (error) {
+    //console.error('Error updating category: ', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const deleteCategory = async (req, res) => {
+  const { owner,id } = req.params; // Get category ID from the URL
+
+  try {
+    const categoryRef = db.collection('owners').doc(owner).collection('Categories').doc(id);
+    const categoryDoc = await categoryRef.get();
+
+    if (!categoryDoc.exists) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Delete the category
+    await categoryRef.delete();
+    return res.status(200).json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    //console.error('Error deleting category: ', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const getExpByInputnFilter = async (req, res) => {
+  const { owner } = req.params;
+  const { searchInput, category } = req.query;
+
+  //console.log(`SearchInput: ${searchInput}, Category: ${category}`);
+
+  try {
+    // Initialize an array to store results
+    const results = [];
+
+    // Define queries for name and area
+    const baseQuery = db
+      .collection('owners')
+      .doc(owner)
+      .collection('Expensives')
+      .where('category', '==', category);
+
+    const nameQuery = baseQuery
+      .where('name', '>=', searchInput)
+      .where('name', '<', searchInput + '\uf8ff');
+
+    const areaQuery = baseQuery
+      .where('area', '>=', searchInput)
+      .where('area', '<', searchInput + '\uf8ff');
+
+    // Execute both queries in parallel
+    const [nameSnapshot, areaSnapshot] = await Promise.all([
+      nameQuery.get(),
+      areaQuery.get(),
+    ]);
+
+    // Add results from name query
+    nameSnapshot.forEach((doc) => {
+      results.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Add results from area query
+    areaSnapshot.forEach((doc) => {
+      results.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Remove duplicate results
+    const uniqueResults = Array.from(
+      new Map(results.map((item) => [item.id, item])).values()
+    );
+
+    // Respond with filtered data
+    return res.status(200).json({
+      success: true,
+      Expensives: uniqueResults,
+    });
+  } catch (error) {
+    //console.error('Error fetching data:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch data',
+    });
+  }
+};
 
 
 
@@ -205,5 +364,12 @@ module.exports = {
   expensiveSearch,
   deleteExpensive,
   getExpensiveDetailsById,
-  updateExpensive
+  updateExpensive,
+  createCategory,
+  getCategory,
+  fetchExpensivesByCategory,
+  updateCategory,
+  deleteCategory,
+  getExpByInputnFilter
+  
 }
