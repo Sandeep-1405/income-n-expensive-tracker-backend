@@ -1,44 +1,45 @@
 const express = require('express');
 
-const {
-    createExpensive, 
-    getExpensivesDetails, 
+const {  
     expensiveSearch, 
-    deleteExpensive, 
-    getExpensiveDetailsById, 
-    updateExpensive, 
     createCategory, 
     getCategory, 
     fetchExpensivesByCategory,
     updateCategory,
     deleteCategory,
-    getExpByInputnFilter
+    getExpByInputnFilter,
+
+    getDetails,
+    create,
+    getDetailsById,
+    updateList,
+    deleteinfo,
 } = require('../controllers/controllers')
 
 const router = express.Router();
 
-router.get('/expensives/:owner',getExpensivesDetails)
+router.get('/get/:owner/:type', getDetails);
 
-router.post('/expensive', createExpensive)
+router.post('/create', create);
 
-router.get('/:owner/search/:input', expensiveSearch) 
+router.get('/:owner/:type/:id',getDetailsById)
 
-router.delete('/:owner/expensive/:id', deleteExpensive)
+router.put('/:type/:id',updateList)
 
-router.get('/:owner/expensive/:id',getExpensiveDetailsById)
+router.delete('/:owner/:type/:id',deleteinfo)
 
-router.put('/:owner/expensive/:id',updateExpensive)
+router.get('/:owner/search/:input', expensiveSearch)
 
-router.post('/:owner/category',createCategory)
-
-router.get('/:owner/category',getCategory)
+router.get('/:owner/expensives', getExpByInputnFilter)
 
 router.get('/:owner/expensives/:category',fetchExpensivesByCategory)
 
-router.put('/:owner/category/:id',updateCategory)
+router.post('/category/:owner',createCategory)
 
-router.delete('/:owner/category/:id',deleteCategory)
+router.get('/category/:owner',getCategory)
 
-router.get('/:owner/expensives', getExpByInputnFilter)
+router.put('/category/:owner/:id',updateCategory)
+
+//router.delete('/category/:owner/:id',deleteCategory)
 
 module.exports = router

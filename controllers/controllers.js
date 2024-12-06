@@ -13,50 +13,6 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-const getExpensivesDetails = async(req,res)=>{
-    try {
-        const { owner } = req.params;
-        //console.log(req.params)
-        //console.log(owner)
-        const workerList = [];
-    
-        const workersSnapshot = await db.collection('owners').doc(owner).collection('Expensives').get();
-    
-        if (workersSnapshot.empty) {
-          return res.status(404).json({ success: false, message: 'No workers found for the given Doc.' });
-        }
-    
-        workersSnapshot.forEach(doc => {
-          workerList.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        //console.log(workerList)
-        res.status(200).json({ success: true, Expensives: workerList });
-    
-      } catch (error) {
-        //console.error('Error fetching worker details:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch worker details', error });
-    }
-}
-
-const createExpensive = async (req, res) => {
-  const { name,date,area,paid,due,amount,category, owner } = req.body;
-  //console.log(owner)
-
-  try {
-    await db.collection('owners').doc(owner).collection("Expensives").add({name,date,area,paid,due,amount,category});
-    
-    //console.log("Expensive created");
-    return res.status(201).json({ message: "Expensive created successfully" });
-  } catch (error) {
-    // Error handling
-    //console.error("Error creating worker:", error);
-    return res.status(500).json({ message: "Failed to create Expensive" });
-  }
-};
-
 const expensiveSearch = async (req, res) => {
   const { owner, input } = req.params;
   //console.log(input)
@@ -277,7 +233,7 @@ const updateCategory = async (req, res) => {
 };
 
 const deleteCategory = async (req, res) => {
-  const { owner,id } = req.params; // Get category ID from the URL
+  const { owner,id } = req.params;
 
   try {
     const categoryRef = db.collection('owners').doc(owner).collection('Categories').doc(id);
@@ -357,10 +313,134 @@ const getExpByInputnFilter = async (req, res) => {
 };
 
 
+const getDetails = async(req,res)=>{
+  try {
+      const { owner,type } = req.params;
+      //console.log(owner)
+      const List = [];
+  
+      const snapshot = await db.collection('owners').doc(owner).collection(type).get();
+  
+      if (snapshot.empty) {
+        return res.status(404).json({ success: false, message: 'No data found.' });
+      }
+  
+      snapshot.forEach(doc => {
+        List.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      res.status(200).json({ success: true, List: List });
+  
+    } catch (error) {
+      //console.error('Error fetching details:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch details', error });
+  }
+}
+
+const create = async (req, res) => {
+  const { name,date,area,paid,due,amount,category, heading,description,owner,type } = req.body;
+  //console.log(req.body);
+
+  try {
+    const snapShot = await db.collection('owners').doc(owner).collection(type);
+
+    const Data =
+      type === "notes"
+        ? { heading, description }
+        : { name, date, area, paid, due, amount, category };
+
+    await snapShot.add(Data);
+    
+    //console.log("created");
+    return res.status(201).json({ message: "Created" });
+  } catch (error) {
+    //console.error("Error creating:", error.message);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const getDetailsById = async (req, res) => {
+  const { id,owner,type } = req.params;
+  //console.log(type)
+
+  try {
+    const snapShot = await db.collection('owners').doc(owner).collection(type).doc(id).get();
+
+    if (!snapShot.exists) {
+      return res.status(404).json({ success: false, message: "Details not found" });
+    }
+
+    const Data = {
+      id: snapShot.id,
+      ...snapShot.data()
+    };
+
+    res.status(200).json({ success: true, List: Data });
+  } catch (error) {
+    //console.error("Error fetching worker details:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch details" });
+  }
+};
+
+const updateList = async (req, res) => {
+  const { id, type } = req.params;
+  
+  const { name, date, area, paid, due, amount, category, heading, description, owner } = req.body;
+
+  //console.log(req.body)
+
+  try {
+    const snapShot = await db.collection('owners').doc(owner).collection(type).doc(id);
+    const doc = await snapShot.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, message: "Document not found" });
+    }
+
+    // Determine fields to update based on type
+    const updateData =
+      type === "notes"
+        ? { heading, description }
+        : { name, date, area, paid, due, amount, category };
+
+    // Perform update
+    await snapShot.update(updateData);
+
+    res.status(200).json({ success: true, message: `${type} updated successfully` });
+  } catch (error) {
+    //console.error("Error updating document:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update details",
+      error: error.message,
+    });
+  }
+};
+
+const deleteinfo = async (req, res) => {
+  const { owner,id,type } = req.params;
+
+  try {
+    const Ref = db.collection('owners').doc(owner).collection(type).doc(id);
+    const Doc = await Ref.get();
+
+    if (!Doc.exists) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    await Ref.delete();
+    return res.status(200).json({ message: 'Deleted successfully' });
+  } catch (error) {
+    //console.error('Error deleting category: ', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 module.exports = {
-  createExpensive,
-  getExpensivesDetails,
+  create,
   expensiveSearch,
   deleteExpensive,
   getExpensiveDetailsById,
@@ -370,6 +450,10 @@ module.exports = {
   fetchExpensivesByCategory,
   updateCategory,
   deleteCategory,
-  getExpByInputnFilter
-  
+  getExpByInputnFilter,
+
+  getDetails,
+  getDetailsById,
+  updateList,
+  deleteinfo,
 }
