@@ -13,69 +13,6 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-const expensiveSearch = async (req, res) => {
-  const { owner, input } = req.params;
-  //console.log(input)
-
-  try {
-    const results = [];
-
-    let query;
-    if (!input) {
-      // If input is empty, fetch all documents
-      query = db.collection('owners').doc(owner).collection('Expensives');
-    } else {
-      // If input is provided, search by name or area
-      const nameQuery = db
-        .collection('owners')
-        .doc(owner)
-        .collection('Expensives')
-        .where('name', '>=', input)
-        .where('name', '<', input + '\uf8ff');
-
-      const areaQuery = db
-        .collection('owners')
-        .doc(owner)
-        .collection('Expensives')
-        .where('area', '>=', input)
-        .where('area', '<', input + '\uf8ff');
-
-      // Execute both queries and combine results
-      const [nameSnapshot, areaSnapshot] = await Promise.all([
-        nameQuery.get(),
-        areaQuery.get(),
-      ]);
-
-      nameSnapshot.forEach((doc) => {
-        results.push({ id: doc.id, ...doc.data() });
-      });
-
-      areaSnapshot.forEach((doc) => {
-        results.push({ id: doc.id, ...doc.data() });
-      });
-
-      // Remove duplicates
-      const uniqueResults = Array.from(
-        new Map(results.map((item) => [item.id, item])).values()
-      );
-
-      return res.status(200).json({ success: true, Expensives: uniqueResults });
-    }
-
-    // Fetch all documents if no input
-    const allSnapshot = await query.get();
-    allSnapshot.forEach((doc) => {
-      results.push({ id: doc.id, ...doc.data() });
-    });
-
-    res.status(200).json({ success: true, workers: results });
-  } catch (error) {
-    //console.error('Error fetching data:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch data' });
-  }
-};
-
-
 const createCategory = async (req,res)=>{
   const {owner} = req.params;
   const {category} = req.body;
@@ -117,7 +54,6 @@ const getCategory = async(req,res) => {
   }
 }
 
-
 const updateCategory = async (req, res) => {
   const { id,owner } = req.params; // Get category ID from the URL
   const { category } = req.body; // Get the new category name from the body
@@ -138,87 +74,6 @@ const updateCategory = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
-
-const deleteCategory = async (req, res) => {
-  const { owner,id } = req.params;
-
-  try {
-    const categoryRef = db.collection('owners').doc(owner).collection('Categories').doc(id);
-    const categoryDoc = await categoryRef.get();
-
-    if (!categoryDoc.exists) {
-      return res.status(404).json({ message: 'Category not found' });
-    }
-
-    // Delete the category
-    await categoryRef.delete();
-    return res.status(200).json({ message: 'Category deleted successfully' });
-  } catch (error) {
-    //console.error('Error deleting category: ', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
-const getExpByInputnFilter = async (req, res) => {
-  const { owner } = req.params;
-  const { searchInput, category } = req.query;
-
-  //console.log(`SearchInput: ${searchInput}, Category: ${category}`);
-
-  try {
-    // Initialize an array to store results
-    const results = [];
-
-    // Define queries for name and area
-    const baseQuery = db
-      .collection('owners')
-      .doc(owner)
-      .collection('Expensives')
-      .where('category', '==', category);
-
-    const nameQuery = baseQuery
-      .where('name', '>=', searchInput)
-      .where('name', '<', searchInput + '\uf8ff');
-
-    const areaQuery = baseQuery
-      .where('area', '>=', searchInput)
-      .where('area', '<', searchInput + '\uf8ff');
-
-    // Execute both queries in parallel
-    const [nameSnapshot, areaSnapshot] = await Promise.all([
-      nameQuery.get(),
-      areaQuery.get(),
-    ]);
-
-    // Add results from name query
-    nameSnapshot.forEach((doc) => {
-      results.push({ id: doc.id, ...doc.data() });
-    });
-
-    // Add results from area query
-    areaSnapshot.forEach((doc) => {
-      results.push({ id: doc.id, ...doc.data() });
-    });
-
-    // Remove duplicate results
-    const uniqueResults = Array.from(
-      new Map(results.map((item) => [item.id, item])).values()
-    );
-
-    // Respond with filtered data
-    return res.status(200).json({
-      success: true,
-      Expensives: uniqueResults,
-    });
-  } catch (error) {
-    //console.error('Error fetching data:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch data',
-    });
-  }
-};
-
 
 const getDetails = async(req,res)=>{
   try {
@@ -428,17 +283,13 @@ const fetchByCategorynSearchInput = async (req, res) => {
 
 
 module.exports = {
-  expensiveSearch,
-  createCategory,
-  getCategory,
-  updateCategory,
-  deleteCategory,
-  getExpByInputnFilter,
-
   create,
   getDetails,
   getDetailsById,
   updateList,
   deleteinfo,
+  createCategory,
+  getCategory,
+  updateCategory,
   fetchByCategorynSearchInput
 }

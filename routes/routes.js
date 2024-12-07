@@ -31,15 +31,6 @@ router.get('/category/:owner',getCategory)
 
 router.put('/category/:owner/:id',updateCategory)
 
-//router.delete('/category/:owner/:id',deleteCategory)
-
-
-//router.get('/:owner/search/:input', expensiveSearch)
-
-//router.get('/:owner/expensives', getExpByInputnFilter)
-
-//router.get('/:owner/expensives/:category',fetchExpensivesByCategory)
-
 router.get('/:owner/:type',fetchByCategorynSearchInput)
 
 module.exports = router
