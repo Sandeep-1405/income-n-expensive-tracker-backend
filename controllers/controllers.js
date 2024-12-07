@@ -75,78 +75,6 @@ const expensiveSearch = async (req, res) => {
   }
 };
 
-const deleteExpensive = async (req, res) => {
-  const { owner,id } = req.params;
-
-  try {
-    const workerRef = db.collection('owners').doc(owner).collection('Expensives').doc(id); // Reference to the document by ID
-    const workerDoc = await workerRef.get();
-
-    if (!workerDoc.exists) {
-      return res.status(404).json({ message: "Worker not found" });
-    }
-
-    await workerRef.delete(); // Delete the document by its Firestore document ID
-
-    //console.log("Worker Deleted");
-    return res.status(200).json({ message: "Worker deleted successfully" });
-
-  } catch (error) {
-    //console.error("Error deleting worker:", error);
-    return res.status(500).json({ message: "Failed to delete worker" });
-  }
-};
-
-const getExpensiveDetailsById = async (req, res) => {
-  const { id,owner } = req.params;
-  //console.log(owner)
-
-  try {
-    // Get the document by its ID
-    const workerDoc = await db.collection('owners').doc(owner).collection('Expensives').doc(id).get();
-
-    if (!workerDoc.exists) {
-      return res.status(404).json({ success: false, message: "Worker not found" });
-    }
-
-    // Get worker data
-    const workerData = {
-      id: workerDoc.id,
-      ...workerDoc.data()
-    };
-
-    res.status(200).json({ success: true, Expensive: workerData });
-  } catch (error) {
-    //console.error("Error fetching worker details:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch worker details" });
-  }
-};
-
-const updateExpensive = async (req, res) => {
-  const {id,owner} = req.params;
-  const {name, date, area, paid, due, amount,category } = req.body;
-
-  try {
-    // Reference to the document
-    const workerRef = await db.collection('owners').doc(owner).collection('Expensives').doc(id);
-
-    // Check if the document exists
-    const workerDoc = await workerRef.get();
-
-    if (!workerDoc.exists) {
-      return res.status(404).json({ success: false, message: "Worker not found" });
-    }
-
-    // Update the document with the new data
-    await workerRef.update({ name, date, area, paid, due, amount,category });
-
-    res.status(200).json({ success: true, message: "Worker updated successfully" });
-
-  } catch (error) {
-    //console.error("Error updating worker:", error);
-    res.status(500).json({ success: false, message: "Failed to update worker" });
-  }
-};
 
 const createCategory = async (req,res)=>{
   const {owner} = req.params;
@@ -189,27 +117,6 @@ const getCategory = async(req,res) => {
   }
 }
 
-
-const fetchExpensivesByCategory = async(req,res)=>{
-  const {owner,category} = req.params;
-
-  try{
-    const categoryExpensives = await db.collection('owners').doc(owner).collection('Expensives').where('category','==',category).get();
-
-    const categoryExpensivesList = []
-
-    categoryExpensives.forEach(doc=>{
-      categoryExpensivesList.push({
-        id:doc.id,
-        ...doc.data()
-      })
-    })
-    res.status(200).json({Expensives: categoryExpensivesList})
-  }catch(error){
-    //console.log(error)
-    res.status(500).json({error})
-  }
-}
 
 const updateCategory = async (req, res) => {
   const { id,owner } = req.params; // Get category ID from the URL
@@ -439,21 +346,99 @@ const deleteinfo = async (req, res) => {
   }
 };
 
+const fetchByCategorynSearchInput = async (req, res) => {
+  const { owner, type } = req.params;
+  const { category = 'All', searchInput = '' } = req.query;
+  console.log("Params", req.params);
+  console.log("Queries", req.query);
+
+  try {
+    const snapShot = db.collection('owners').doc(owner).collection(type);
+    let query = snapShot;
+    let results = [];
+
+    if (category === 'All' && searchInput === '') {
+      // Fetch all documents if no filters are applied
+      const allDocs = await snapShot.get();
+      allDocs.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+    } else if (category === 'All' && searchInput !== '') {
+      // Search in 'name' and 'area' fields for the given input
+      const nameQuery = snapShot
+        .where('name', '>=', searchInput)
+        .where('name', '<', searchInput + '\uf8ff');
+      const areaQuery = snapShot
+        .where('area', '>=', searchInput)
+        .where('area', '<', searchInput + '\uf8ff');
+
+      const [nameSnapshot, areaSnapshot] = await Promise.all([
+        nameQuery.get(),
+        areaQuery.get(),
+      ]);
+
+      nameSnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+
+      areaSnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+
+      results = Array.from(new Map(results.map((item) => [item.id, item])).values());
+    } else if (category !== 'All' && searchInput === '') {
+      query = snapShot.where('category', '==', category);
+      const categorySnapshot = await query.get();
+      categorySnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+    } else if (category !== 'All' && searchInput !== '') {
+      const nameQuery = snapShot
+        .where('category', '==', category)
+        .where('name', '>=', searchInput)
+        .where('name', '<', searchInput + '\uf8ff');
+      const areaQuery = snapShot
+        .where('category', '==', category)
+        .where('area', '>=', searchInput)
+        .where('area', '<', searchInput + '\uf8ff');
+
+      const [nameSnapshot, areaSnapshot] = await Promise.all([
+        nameQuery.get(),
+        areaQuery.get(),
+      ]);
+
+      nameSnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+
+      areaSnapshot.forEach((doc) => {
+        results.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Remove duplicates
+      results = Array.from(new Map(results.map((item) => [item.id, item])).values());
+    }
+
+    res.status(200).json({ List: results });
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    res.status(500).json({ error: error.message || "Internal Server Error" });
+  }
+};
+
+
 module.exports = {
-  create,
   expensiveSearch,
-  deleteExpensive,
-  getExpensiveDetailsById,
-  updateExpensive,
   createCategory,
   getCategory,
-  fetchExpensivesByCategory,
   updateCategory,
   deleteCategory,
   getExpByInputnFilter,
 
+  create,
   getDetails,
   getDetailsById,
   updateList,
   deleteinfo,
+  fetchByCategorynSearchInput
 }
